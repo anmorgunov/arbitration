@@ -13,6 +13,7 @@ class Responses:
         self.parsed = []
         self.emailToApp = {}
         self.juryToGrToData = {}
+        self.finalQueue = {}
 
         # screw it, hardcoding is king
         self.PROBCOLS = 'GHIJKLMNOP'
@@ -111,6 +112,20 @@ class Responses:
                                     return True
         return False
 
+    def _is_there_a_conflict_EXTRA(self, data):
+        for grade, juryToStudents in data.items():
+            for jury, students in juryToStudents.items():
+                for i, student in enumerate(students):
+                    for jury2, students2 in juryToStudents.items():
+                        if jury2 != jury:
+                            if len(students2) > 0 and i < len(students2):
+                                if students2[i] == student:
+                                    return True
+                            if len(students2) > 0 and i < len(students2) - 2:
+                                if students2[i+1] == student:
+                                    return True
+        return False
+
     def _remove_repetitions_in_queue(self):
         wb = load_workbook('queue.xlsx')
         grToData = {}
@@ -136,21 +151,39 @@ class Responses:
                 col = helper.getNextCol(col)
                 col = helper.getNextCol(col)
         
+        cntr = 0
         while True:
+            cntr += 1
+            # print(cntr)
+            # anotherIter = False
             conflict = self._is_there_a_conflict(grToData)
-            print(conflict)
+            # conflict = self._is_there_a_conflict_EXTRA(grToData) # failure
             if not conflict:
                 break
+            anotherIter = False
+            # if not anotherIter:
             for grade, juryToStudents in grToData.items():
+                # if not anotherIter:
                 for jury, students in juryToStudents.items():
+                    # if not anotherIter:
                     for i, student in enumerate(students):
+                        # if not anotherIter:
                         for jury2, students2 in juryToStudents.items():
                             if jury2 != jury:
                                 if len(students2) > 0 and i < len(students2):
                                     if students2[i] == student:
                                         students = students[:i] + students[i+1:] + students[i:i+1]
                                         grToData[grade][jury] = students
+                                        # anotherIter = True
                                         break
+                                    # if not anotherIter:
+                                    #     if len(students2) > 0 and i < len(students2) - 2:
+                                    #         if students2[i+1] == student:
+                                    #             students = students[:i+1] + students[i+2:] + students[i+1:i+2]
+                                    #             grToData[grade][jury] = students
+                                    #             anotherIter = True
+                                    #             break
+            # print('here')
         new_wb = Workbook()
         for grade, juryToStudents in grToData.items():
             new_wb.create_sheet(f"{grade} класс")
@@ -169,14 +202,41 @@ class Responses:
                 col = helper.getNextCol(col)
                 col = helper.getNextCol(col)
         new_wb.save('queue_with_no_conflicts.xlsx')
+        self.finalQueue = grToData
+
+    def _print_jury_to_comments(self):
+        juries = set()
+        for grade, juryToStuds in self.finalQueue.items():
+            juries = juries | set(juryToStuds.keys())
+        for jury in juries:
+            for grade, juryToStuds in self.finalQueue.items():
+                f = open(f'{jury}-{grade}.txt', 'w')
+                # wb.create_sheet(f"{grade} класс")
+                # ws = wb[f"{grade} класс"]
+                # row = 1
+                for student in juryToStuds[jury]:
+                    f.write('----------------------\n')
+                    f.write(student+'\n')
+                    for data in self.juryToGrToData[jury][grade]:
+                        if data['name'][0][0] == student:
+                            for param, response in data.items():
+                                if param in constants.P_TO_JURY[grade]:
+                                    if constants.P_TO_JURY[grade][param] == jury:
+                                        f.write(f"--{param}\n")
+                                        f.write(str(response) + '\n\n')
+
+
+
+            # wb.save(f"{jury}.xlsx")
 
     def main(self):
-        # self._parse_results()
-        # self._find_uniques() #oh god why
-        # self._make_queue_for_jury()
-        # self._summary_for_jury()
-        # self._create_the_queue()
+        self._parse_results()
+        self._find_uniques() #oh god why
+        self._make_queue_for_jury()
+        self._summary_for_jury()
+        self._create_the_queue()
         self._remove_repetitions_in_queue()
+        self._print_jury_to_comments()
 
 # assume sheet is names "sheet"
 chObj = Responses('chemistry.xlsx', constants.COL_TO_PARAM, constants.P_TO_JURY)

@@ -3,3 +3,4 @@
 *.txt
 helper.py
 /__pycache__/
+*.zip
