@@ -1,5 +1,6 @@
-from json import load
 from openpyxl import load_workbook
+from openpyxl import Workbook
+import helper
 
 class Responses:
 
@@ -10,6 +11,7 @@ class Responses:
         self.juryToStudents = {}
         self.parsed = []
         self.emailToApp = {}
+        self.juryToGrToData = {}
 
         # screw it, hardcoding is king
         self.PROBCOLS = 'GHIJKLMNOP'
@@ -23,7 +25,7 @@ class Responses:
                 break
             student = {}
             for col, param in self.CODE.items():
-                if (response:=ws[col+str(row)].value) is not None and response != '-':
+                if (response:=ws[col+str(row)].value) is not None and response != '-' and response != '.' and response != 'Нет вопросов':
                     student[param] = response
             self.parsed.append(student)
             row += 1
@@ -50,19 +52,64 @@ class Responses:
                     jury = self.JURY[grade][prob]
                     # print(jury)
                     if jury not in self.juryToStudents:
-                        self.juryToStudents[jury] = []
-                    self.juryToStudents[jury].append(data)
+                        self.juryToStudents[jury] = {}
+                    if email not in self.juryToStudents[jury]:
+                        self.juryToStudents[jury][email] = {}
+                    for param, values in data.items():
+                        if param not in self.juryToStudents[jury][email]:
+                            self.juryToStudents[jury][email][param] = []
+                        self.juryToStudents[jury][email][param].append(values)
+                    # self.juryToStudents[jury].append(data)
 
     def _summary_for_jury(self):
-        for jury, studs in self.juryToStudents.items():
-            print(jury, len(studs))
+        juryToGrToNum = {}
+        for jury, emailToParam in self.juryToStudents.items():
+            print(jury, len(emailToParam))
+            if jury not in juryToGrToNum:
+                juryToGrToNum[jury] = {}
+            for email, paramToData in emailToParam.items():
+                grade = paramToData['grade'][0][0] #hardcoding but screw it
+                if grade not in juryToGrToNum[jury]:
+                    juryToGrToNum[jury][grade] = []
+                juryToGrToNum[jury][grade].append(paramToData)
+        
+        for jury, grToData in juryToGrToNum.items():
+            for gr, data in grToData.items():
+                print(jury, gr, len(data))
+        
+        self.juryToGrToData = juryToGrToNum
+
+    def _create_the_queue(self):
+        wb = Workbook()
+        for grade in (9, 10, 11):
+            wb.create_sheet(f"{grade} класс")
+            ws = wb[f"{grade} класс"]
+            col = 'A'
+            for jury, grToData in self.juryToGrToData.items():
+                row = 1
+                ws[col + str(row)] = jury
+                row += 1
+                if grade in grToData:
+                    for student in grToData[grade]:
+                        # print(student['name'])
+                        ws[col + str(row)] = row - 1 
+                        ws[helper.getNextCol(col) + str(row)] = student['name'][0][0] 
+                        row += 1 
+                col = helper.getNextCol(col)
+                col = helper.getNextCol(col)
+        wb.save('queue.xlsx')
+
+
+
+
+
                 
     def main(self):
         self._parse_results()
         self._find_uniques() #oh god why
         self._make_queue_for_jury()
         self._summary_for_jury()
-
+        self._create_the_queue()
 
 
 COL_TO_PARAM = {
