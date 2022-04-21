@@ -1,8 +1,7 @@
-from multiprocessing.spawn import get_preparation_data
-from numpy import gradient
 from openpyxl import load_workbook
 from openpyxl import Workbook
 import helper
+import constants
 
 class Responses:
 
@@ -171,12 +170,6 @@ class Responses:
                 col = helper.getNextCol(col)
         new_wb.save('queue_with_no_conflicts.xlsx')
 
-
-
-
-
-
-                
     def main(self):
         # self._parse_results()
         # self._find_uniques() #oh god why
@@ -185,60 +178,6 @@ class Responses:
         # self._create_the_queue()
         self._remove_repetitions_in_queue()
 
-
-COL_TO_PARAM = {
-    'B': 'email',
-    'C': 'oblast',
-    'E': 'name',
-    'F': 'grade',
-    'G': 'p1',
-    'H': 'p2',
-    'I': 'p3',
-    'J': 'p4',
-    'K': 'p5',
-    'L': 'p6',
-    'M': 'p7',
-    'N': 'p8',
-    'O': 'p2-1',
-    'P': 'p2-2', # GHIJKLMNOP
-}
-
-P_TO_JURY = {
-    9: {
-        'p1': 'Тасанов А.',
-        'p2': 'Тасанов А.',
-        'p3': 'Черданцев В.',
-        'p4': 'Моргунов А.',
-        'p5': 'Тайшыбай А.',
-        'p6': 'Черданцев В.',
-        'p7': 'Молдагулов Г.',
-        'p2-1': 'Молдагулов Г.'
-    },
-    10: {
-        'p1': 'Бекхожин Ж.',
-        'p2': 'Моргунов А.',
-        'p3': 'Тайшыбай А.',
-        'p4': 'Загрибельный Б.',
-        'p5': 'Мадиева М.',
-        'p6': 'Молдагулов Г.',
-        'p7': 'Бекхожин Ж.',
-        'p2-1': 'Бекхожин Ж.',
-        'p2-2': 'Черданцев В.'
-    },
-    11: {
-        'p1': 'Мадиева М.',
-        'p2': 'Моргунов А.',
-        'p3': 'Тайшыбай А.',
-        'p4': 'Загрибельный Б.',
-        'p5': 'Мадиева М.',
-        'p6': 'Моргунов А.',
-        'p7': 'Тайшыбай А.',
-        'p8': 'Загрибельный Б.',
-        'p2-1': 'Молдагулов Г.',
-        'p2-2': 'Черданцев В.'
-    }
-}
-
 # assume sheet is names "sheet"
-chObj = Responses('chemistry.xlsx', COL_TO_PARAM, P_TO_JURY)
+chObj = Responses('chemistry.xlsx', constants.COL_TO_PARAM, constants.P_TO_JURY)
 chObj.main()
