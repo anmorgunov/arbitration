@@ -2,3 +2,4 @@
 *.xlsx
 *.txt
 helper.py
+/__pycache__/
