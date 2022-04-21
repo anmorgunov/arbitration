@@ -1,3 +1,5 @@
+from multiprocessing.spawn import get_preparation_data
+from numpy import gradient
 from openpyxl import load_workbook
 from openpyxl import Workbook
 import helper
@@ -99,17 +101,89 @@ class Responses:
                 col = helper.getNextCol(col)
         wb.save('queue.xlsx')
 
+    def _is_there_a_conflict(self, data):
+        for grade, juryToStudents in data.items():
+            for jury, students in juryToStudents.items():
+                for i, student in enumerate(students):
+                    for jury2, students2 in juryToStudents.items():
+                        if jury2 != jury:
+                            if len(students2) > 0 and i < len(students2):
+                                if students2[i] == student:
+                                    return True
+        return False
+
+    def _remove_repetitions_in_queue(self):
+        wb = load_workbook('queue.xlsx')
+        grToData = {}
+        for grade in (9, 10, 11):
+            ws = wb[f"{grade} класс"]
+            juryToStuds = {}
+            col = 'A'
+            while True:
+                if (jury := ws[col+str(1)].value) is None:
+                    break
+
+                row = 1
+                
+                if jury not in juryToStuds:
+                    juryToStuds[jury] = []
+                    row = 2
+                    while True:
+                        if (name:=ws[helper.getNextCol(col)+str(row)].value) is None:
+                            break
+                        juryToStuds[jury].append(name)
+                        row += 1
+                grToData[grade] = juryToStuds
+                col = helper.getNextCol(col)
+                col = helper.getNextCol(col)
+        
+        while True:
+            conflict = self._is_there_a_conflict(grToData)
+            print(conflict)
+            if not conflict:
+                break
+            for grade, juryToStudents in grToData.items():
+                for jury, students in juryToStudents.items():
+                    for i, student in enumerate(students):
+                        for jury2, students2 in juryToStudents.items():
+                            if jury2 != jury:
+                                if len(students2) > 0 and i < len(students2):
+                                    if students2[i] == student:
+                                        students = students[:i] + students[i+1:] + students[i:i+1]
+                                        grToData[grade][jury] = students
+                                        break
+        new_wb = Workbook()
+        for grade, juryToStudents in grToData.items():
+            new_wb.create_sheet(f"{grade} класс")
+            ws = new_wb[f"{grade} класс"]
+            col = 'A'
+            for jury, students in juryToStudents.items():
+                # print(students)
+                row = 1
+                ws[col + str(row)] = jury
+                row += 1
+                for student in students:
+                    # print(student['name'])
+                    ws[col + str(row)] = row - 1 
+                    ws[helper.getNextCol(col) + str(row)] = student
+                    row += 1 
+                col = helper.getNextCol(col)
+                col = helper.getNextCol(col)
+        new_wb.save('queue_with_no_conflicts.xlsx')
+
+
 
 
 
 
                 
     def main(self):
-        self._parse_results()
-        self._find_uniques() #oh god why
-        self._make_queue_for_jury()
-        self._summary_for_jury()
-        self._create_the_queue()
+        # self._parse_results()
+        # self._find_uniques() #oh god why
+        # self._make_queue_for_jury()
+        # self._summary_for_jury()
+        # self._create_the_queue()
+        self._remove_repetitions_in_queue()
 
 
 COL_TO_PARAM = {
